@@ -6,9 +6,15 @@ import {
   openExamplePage,
 } from '../utils/pageLifecycle';
 
-jest.mock('react-native-mehery-event-sender', () => ({
-  sendCustomEvent: jest.fn(),
-}));
+jest.mock(
+  'react-native-mehery-event-sender',
+  () => ({
+    sendCustomEvent: jest.fn(),
+  }),
+  // The SDK is resolved via Metro watchFolders at runtime, not from
+  // example/node_modules, so Jest needs a virtual mock here.
+  { virtual: true }
+);
 
 describe('pageLifecycle', () => {
   beforeEach(() => {

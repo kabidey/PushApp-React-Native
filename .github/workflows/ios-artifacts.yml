@@ -1,0 +1,53 @@
+name: iOS artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-example-ios:
+    name: Build example app (iOS Simulator)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          cd example/ios
+          pod install --repo-update
+        env:
+          NO_FLIPPER: 1
+
+      - name: Build example for iOS Simulator
+        run: yarn turbo run build:ios --force --no-cache
+
+      - name: Locate built .app
+        id: locate
+        run: |
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name 'MeheryEventSenderExample.app' | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found in DerivedData" && exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found: $APP_PATH"
+
+      - name: Zip .app
+        env:
+          APP_PATH: ${{ steps.locate.outputs.app_path }}
+        run: |
+          cd "$(dirname "$APP_PATH")"
+          ditto -c -k --sequesterRsrc --keepParent "$(basename "$APP_PATH")" "$RUNNER_TEMP/MeheryEventSenderExample.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rn-example-ios-simulator-app
+          path: ${{ runner.temp }}/MeheryEventSenderExample.zip
+          retention-days: 30
